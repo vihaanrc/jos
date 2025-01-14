@@ -12,14 +12,22 @@
             "environment": [],
             "externalConsole": false,
             "MIMode": "gdb",
-            "miDebuggerServerAddress": "localhost:26000",
+            "miDebuggerServerAddress": "localhost:${input:port}",
             "setupCommands": [
                 {
                     "description": "Enable pretty-printing for gdb",
                     "text": "-enable-pretty-printing",
                     "ignoreFailures": true
-                },
-            ],
-        },
+                }
+            ]
+        }
+    ],
+    "inputs": [
+        {
+            "id": "port",
+            "type": "promptString",
+            "description": "Enter the port number",
+            "default": "26000"
+        }
     ]
 }
