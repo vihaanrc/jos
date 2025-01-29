@@ -23,11 +23,21 @@ struct Command {
 
 // LAB 1: add your command to here...
 static struct Command commands[] = {
+	{ "test", "test print commands for exercise 7", mon_test },
 	{ "help", "Display this list of commands", mon_help },
+	{ "hidden", "Run hidden test cases", exec_hidden_cases},
 	{ "kerninfo", "Display information about the kernel", mon_kerninfo },
+	{ "backtrace", "Display the current backtrace", mon_backtrace}
+	
 };
 
 /***** Implementations of basic kernel monitor commands *****/
+int 
+mon_test(int argc, char **argv, struct Trapframe *tf) {
+	int x = 1, y = 3, z = 4;
+    cprintf("x %d, y %x, z %d\n", x, y, z);
+	return 0;
+}
 
 int
 mon_help(int argc, char **argv, struct Trapframe *tf)
@@ -61,11 +71,36 @@ mon_backtrace(int argc, char **argv, struct Trapframe *tf)
 	// LAB 1: Your code here.
     // HINT 1: use read_ebp().
     // HINT 2: print the current ebp on the first line (not current_ebp[0])
+	cprintf("Stack backtrace:\n");
+	uint32_t*ebp = (uint32_t *)read_ebp();
+	//until ebp is 0
+	while (ebp != 0x0) {
+		
+		uint32_t eip = ebp[1];
+		uint32_t arg1 = ebp[2];
+		uint32_t arg2 = ebp[3];
+		uint32_t arg3 = ebp[4];
+		uint32_t arg4 = ebp[5];
+		uint32_t arg5 = ebp[6];
+		//print the backtrace
+		cprintf("  ebp %08x  eip %08x  args %08x %08x %08x %08x %08x\n", ebp, eip, arg1, arg2, arg3, arg4, arg5);
+		
+		struct Eipdebuginfo info;
+		debuginfo_eip(eip, &info);
+		
+		cprintf("\t%s:%d: %.*s+%d\n", info.eip_file, info.eip_line, info.eip_fn_namelen, info.eip_fn_name, eip - info.eip_fn_addr);
+		//get the next ebp
+		ebp = (uint32_t *)ebp[0];
+	}
+
 	return 0;
 }
 
 
-
+int exec_hidden_cases(int argc, char **argv, struct Trapframe *tf) {
+	//hidden_test_cases();
+	return 0;
+}
 /***** Kernel monitor command interpreter *****/
 
 #define WHITESPACE "\t\r\n "
