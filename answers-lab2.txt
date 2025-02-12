@@ -1,0 +1,47 @@
+a:
+
+    +-----+----------------------+---------------------------------------+
+    |Entry      | Base Virtual Address |  Points to (logically)                |
+    +=====+======================+=======================================+
+    |1023       | 0xFFC00000           | Page table for top 4MB of phys memory |
+    +-----+----------------------+---------------------------------------+
+    |960-1022   | 0xFF800000           | Kernel memory mapping starting at KERNBASE                                 |
+    +-----+----------------------+---------------------------------------+
+    |959        | 0xEFC00000           | Memory mapped IO                |
+    +-----+----------------------+---------------------------------------+
+    |957        | 0xEFC00000           | UVPT                            |
+    +-----+----------------------+---------------------------------------+
+    |956        | 0xEF000000           | UPAGES                          |
+    +-----+----------------------+---------------------------------------+
+    |2    | 0x00800000           | User Text Space (UTEXT)               |
+    +-----+----------------------+---------------------------------------+
+    |1    | 0x00400000           | User Temp Space  (UTEMP)              |
+    +-----+----------------------+---------------------------------------+
+    |0    | 0x00000000           | [see next question]                   |
+    +-----+----------------------+---------------------------------------+
+
+b:
+
+   KERNBASE (0xF0000000) and above:
+    - Marked as RW/-- (kernel RW, user no access)
+    - Protected by PTE_U bit absence
+c: 
+    adderess space -> 2^32 = 4GB
+    KERNBASE --> 0xF0000000 = 3840MB
+    Maximum addressable:
+    Total = 4GB - KERNBASE = 256MB
+
+d:
+    Memory overhead for max physical memory:
+    - (256MB / 4KB) * 4KB page tables
+    - Plus 4KB page directory
+    = ((256MB / 4KB) * 4KB) + 4KB
+    = ~256KB total overhead 
+
+e:
+    this happens when "	mov	$relocated, %eax" executes
+
+    this is possible after enabling paging and running at low eip because we identity mapping (entry_pgdir[0] = entry_pgdir[PDX(0)] = PADDR(entry_pgdir) | PTE_P | PTE_W;)
+
+    this transition is needed becuase we habvve to load the kernel to physical mem at 1MB and then switch to virtual memory (kernbase + 1MB) to run the kernel
+    by using high address we can seperate the kernel and user space without breaking the code execution
