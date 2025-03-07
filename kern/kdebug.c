@@ -150,6 +150,15 @@ debuginfo_eip(uintptr_t addr, struct Eipdebuginfo *info)
 
 		// Make sure the STABS and string table memory is valid.
 		// LAB 3: Your code here.
+		if (stabs != NULL && user_mem_check(curenv, stabs, sizeof(struct Stab) * (stab_end - stabs), PTE_U) < 0) {
+			return -1;
+		}
+		if (stabstr != NULL && user_mem_check(curenv, stabstr, stabstr_end - stabstr, PTE_U) < 0) {
+			return -1;
+		}
+		if (usd != NULL && user_mem_check(curenv, usd, sizeof(*usd), PTE_U) < 0) {
+			return -1;
+		}
 	}
 
 	// String table validity checks

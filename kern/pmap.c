@@ -672,7 +672,7 @@ user_mem_check(struct Env *env, const void *va, size_t len, int perm)
 
 		//checks same page multiple times but its ok
 		pte_t *pte = pgdir_walk(pgdir, (void *)va_current, 0);
-        if (!pte || !(*pte & perm)) {
+        if (!pte || ((*pte & (PTE_P | perm)) != (PTE_P | perm))) {
             if (va_current < (uintptr_t)va)
 				va_current = (uintptr_t)va;
 			

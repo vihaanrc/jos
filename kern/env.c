@@ -300,15 +300,15 @@ region_alloc(struct Env *e, void *va, size_t len)
 	
 
 	for (void* addr = start; addr < end; addr += PGSIZE) {
-		struct PageInfo *pp = page_alloc(0);
-		if (!pp) {
-			panic("region_alloc: page_alloc error");
+		struct PageInfo *pp = page_lookup(e->env_pgdir, (void *) addr, NULL);
+		if (pp == NULL) {	
+			struct PageInfo *pp = page_alloc(0);
+			if (!pp) {
+				panic("region_alloc: out of memory");
+			}
+			page_insert(e->env_pgdir, pp, (void *) addr, PTE_U | PTE_W);
+
 		}
-		
-		if (page_insert(e->env_pgdir, pp, addr, PTE_W | PTE_U) < 0) { 
-			panic("region_alloc: page_insert error");
-		}
-		//page insert handles reference counting
 		
 	}
 	
@@ -380,9 +380,9 @@ load_icode(struct Env *e, uint8_t *binary)
 		panic("load_icode: Invalid binary");
 	}
 
-	struct Proghdr *ph = (struct Proghdr*) ((uint8_t *) binary + elf_hdr->e_phoff);
+	struct Proghdr *ph = (struct Proghdr*) ((uint8_t *)elf_hdr + elf_hdr->e_phoff);
 
-	
+	pde_t *old_pgdir = (pde_t *) KADDR(rcr3());
 	lcr3(PADDR(e->env_pgdir)); 
 
 	for (int i = 0; i < elf_hdr->e_phnum; i++) {
@@ -411,6 +411,7 @@ load_icode(struct Env *e, uint8_t *binary)
 	
 	
 	region_alloc(e, (void*) (USTACKTOP - PGSIZE), PGSIZE);
+	lcr3(PADDR(old_pgdir));
 	//memcpy or memset?
 
 

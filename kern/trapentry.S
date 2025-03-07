@@ -85,6 +85,7 @@ TRAPHANDLER_NOEC(t_default, T_DEFAULT);
 	movw %ax, %es
 	pushl %esp
 	call trap
+	jmp . 
 
 
 
