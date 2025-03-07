@@ -11,6 +11,7 @@
 #include <kern/monitor.h>
 #include <kern/kdebug.h>
 #include <kern/trap.h>
+#include <kern/env.h>
 
 #define CMDBUF_SIZE	80	// enough for one VGA text line
 
@@ -28,7 +29,8 @@ static struct Command commands[] = {
 	{ "help", "Display this list of commands", mon_help },
 	{ "hidden", "Run hidden test cases", exec_hidden_cases},
 	{ "kerninfo", "Display information about the kernel", mon_kerninfo },
-	{ "backtrace", "Display the current backtrace", mon_backtrace}
+	{ "backtrace", "Display the current backtrace", mon_backtrace},
+	{"si", "Step through the code", mon_si}
 	
 };
 
@@ -94,6 +96,19 @@ mon_backtrace(int argc, char **argv, struct Trapframe *tf)
 		ebp = (uint32_t *)ebp[0];
 	}
 
+	return 0;
+}
+
+int mon_si(int argc, char **argv, struct Trapframe *tf) {
+	if (tf == NULL) {
+		cprintf("No valid trapframe found (called by mon_si)\n");
+		return 0;
+	}
+
+	tf->tf_eflags |= FL_TF; //enables single step (trap flag)
+	//generates type-1 interrupt (DEBUG interrupt)
+
+	env_pop_tf(tf); //save updated trapframe to CPU
 	return 0;
 }
 

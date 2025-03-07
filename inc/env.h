@@ -45,7 +45,7 @@ enum EnvType {
 
 struct Env {
 	struct Trapframe env_tf;	// Saved registers
-	struct Env *env_link;		// Next free Env
+	struct Env *env_link;		// Next free Env (in env_free_list)
 	envid_t env_id;			// Unique environment identifier
 	envid_t env_parent_id;		// env_id of this env's parent
 	enum EnvType env_type;		// Indicates special system environments
