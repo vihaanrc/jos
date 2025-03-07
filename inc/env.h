@@ -2,7 +2,7 @@
 
 #ifndef JOS_INC_ENV_H
 #define JOS_INC_ENV_H
-
+// inc stands for include directory. this directory contains all the header files
 #include <inc/types.h>
 #include <inc/trap.h>
 #include <inc/memlayout.h>
@@ -25,9 +25,13 @@ typedef int32_t envid_t;
 // envid_ts less than 0 signify errors.  The envid_t == 0 is special, and
 // stands for the current environment.
 
-#define LOG2NENV		10
-#define NENV			(1 << LOG2NENV)
+#define LOG2NENV		10 // 2^10 = 1024 is the maximum number of environments
+#define NENV			(1 << LOG2NENV) 
+// The maximum number of environments is 1024
+// LOG2NENV is the number of bits needed to represent the number of environments
+// NENV is the number of environments
 #define ENVX(envid)		((envid) & (NENV - 1))
+// ENVX(envid) is the index of the environment in the envs[] array
 
 // Values of env_status in struct Env
 enum {
@@ -42,11 +46,17 @@ enum {
 enum EnvType {
 	ENV_TYPE_USER = 0,
 };
-
+// default environment type is user environment
+// other types can be added here
 struct Env {
-	struct Trapframe env_tf;	// Saved registers
-	struct Env *env_link;		// Next free Env
-	envid_t env_id;			// Unique environment identifier
+	struct Trapframe env_tf;	// Saved registers 
+	struct Env *env_link;		// Next free Env (on free list)
+	envid_t env_id;			// Unique environment identifier 
+	//is this the same as pid in linux? 
+	//no, pid is process id, this is environment id
+	//what is the difference between process and environment?
+	//process is a program in execution, environment is a process in execution
+
 	envid_t env_parent_id;		// env_id of this env's parent
 	enum EnvType env_type;		// Indicates special system environments
 	unsigned env_status;		// Status of the environment
@@ -54,6 +64,8 @@ struct Env {
 
 	// Address space
 	pde_t *env_pgdir;		// Kernel virtual address of page dir
+	
 };
 
 #endif // !JOS_INC_ENV_H
+

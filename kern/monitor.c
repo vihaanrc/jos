@@ -6,7 +6,8 @@
 #include <inc/memlayout.h>
 #include <inc/assert.h>
 #include <inc/x86.h>
-
+//inlcude env.c
+#include <kern/env.h>
 #include <kern/console.h>
 #include <kern/monitor.h>
 #include <kern/kdebug.h>
@@ -14,7 +15,7 @@
 
 #define CMDBUF_SIZE	80	// enough for one VGA text line
 
-
+static int single_stepping =0;
 struct Command {
 	const char *name;
 	const char *desc;
@@ -22,13 +23,34 @@ struct Command {
 	int (*func)(int argc, char** argv, struct Trapframe* tf);
 };
 
+// Single-step execution (one instruction)
+int
+mon_single_step(int argc, char **argv, struct Trapframe *tf)
+{
+    if (tf == NULL) {
+        cprintf("No trap frame to single-step from.\n");
+        return 0;
+    }
+    
+    // Set trap flag in EFLAGS to enable single-stepping
+    tf->tf_eflags |= FL_TF;
+
+	env_pop_tf(tf);
+	
+    
+    // Return 1 to indicate we want to exit the monitor
+    return 0;
+}
+
 // LAB 1: add your command to here...
 static struct Command commands[] = {
 	{ "test", "test print commands for exercise 7", mon_test },
 	{ "help", "Display this list of commands", mon_help },
 	{ "hidden", "Run hidden test cases", exec_hidden_cases},
 	{ "kerninfo", "Display information about the kernel", mon_kerninfo },
-	{ "backtrace", "Display the current backtrace", mon_backtrace}
+	{ "backtrace", "Display the current backtrace", mon_backtrace},
+	{ "si", "Execute a single instruction", mon_single_step },
+
 	
 };
 
@@ -98,6 +120,7 @@ mon_backtrace(int argc, char **argv, struct Trapframe *tf)
 }
 
 
+
 int exec_hidden_cases(int argc, char **argv, struct Trapframe *tf) {
 	//hidden_test_cases();
 	return 0;
@@ -156,7 +179,9 @@ monitor(struct Trapframe *tf)
 
 	if (tf != NULL)
 		print_trapframe(tf);
-
+	if (tf && single_stepping) {
+        cprintf("Single-stepping at eip=%08x\n", tf->tf_eip);
+	}
 	while (1) {
 		buf = readline("K> ");
 		if (buf != NULL)

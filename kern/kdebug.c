@@ -143,19 +143,26 @@ debuginfo_eip(uintptr_t addr, struct Eipdebuginfo *info)
 		// Return -1 if it is not.  Hint: Call user_mem_check.
 		// LAB 3: Your code here.
 
+
 		stabs = usd->stabs;
 		stab_end = usd->stab_end;
 		stabstr = usd->stabstr;
 		stabstr_end = usd->stabstr_end;
 
+
 		// Make sure the STABS and string table memory is valid.
 		// LAB 3: Your code here.
+
+		if (stabs != NULL && user_mem_check(curenv, stabs, sizeof(struct Stab) * (stab_end - stabs), PTE_U) < 0) {
+			return -1;
+		}
+		if (stabstr != NULL && user_mem_check(curenv, stabstr, stabstr_end - stabstr, PTE_U) < 0) {
+			return -1;
+		}
+		if (usd != NULL && user_mem_check(curenv, usd, sizeof(*usd), PTE_U) < 0) {
+			return -1;
+		}
 	}
-
-	// String table validity checks
-	if (stabstr_end <= stabstr || stabstr_end[-1] != 0)
-		return -1;
-
 	// Now we find the right stabs that define the function containing
 	// 'eip'.  First, we find the basic source file containing 'eip'.
 	// Then, we look in that source file for the function.  Then we look
