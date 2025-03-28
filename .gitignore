@@ -66,6 +66,7 @@ core
 !.vscode/extensions.json
 *.code-workspace
 
+/.vscode/settings.json
 # Session
 Session.vim
 Sessionx.vim
