@@ -97,7 +97,7 @@ boot_alloc(uint32_t n)
 	// to any kernel code or global variables.
 	if (!nextfree) {
 		extern char end[];
-		nextfree = ROUNDUP((char *) end, PGSIZE);
+		nextfree = ROUNDUP((char *) end + 1, PGSIZE);
 	}
 
 	// Allocate a chunk large enough to hold 'n' bytes, then update
@@ -175,6 +175,8 @@ mem_init(void)
 	//////////////////////////////////////////////////////////////////////
 	// Make 'envs' point to an array of size 'NENV' of 'struct Env'.
 	// LAB 3: Your code here.
+	envs = (struct Env *) boot_alloc(sizeof(struct Env) * NENV);
+	memset(envs, 0, sizeof(struct Env) * NENV);
 
 	//////////////////////////////////////////////////////////////////////
 	// Now that we've allocated the initial kernel data structures, we set
@@ -211,6 +213,7 @@ mem_init(void)
 	//    - the new image at UENVS  -- kernel R, user R
 	//    - envs itself -- kernel RW, user NONE
 	// LAB 3: Your code here.
+	boot_map_region(kern_pgdir, UENVS, NENV * sizeof(struct Env), PADDR(envs), PTE_U | PTE_P);
 
 	//////////////////////////////////////////////////////////////////////
 	// Use the physical memory that 'bootstack' refers to as the kernel
@@ -233,6 +236,7 @@ mem_init(void)
 	// we just set up the mapping anyway.
 	// Permissions: kernel RW, user NONE
 	// Your code goes here:
+	boot_map_region(kern_pgdir, KERNBASE, 32768*2 * PGSIZE, 0, PTE_W);
 
 	// Initialize the SMP-related parts of the memory map
 	mem_init_mp();
@@ -356,7 +360,7 @@ page_init(void)
         pages[i].pp_ref = 0;
         pages[i].pp_link = NULL;
 		if (pa == 0x3ff000) {
-			cprintf("page_init: Adding page %d at PA = 0x%x to free list\n", i, pa);
+			//cprintf("page_init: Adding page %d at PA = 0x%x to free list\n", i, pa);
 		}
 
         pages[i].pp_link = page_free_list;
@@ -407,11 +411,11 @@ page_free(struct PageInfo *pp)
     // pp->pp_link is not NULL.
 
     // Print the physical address of the page
-    cprintf("page_free: Trying to free page at PA = 0x%x\n", page2pa(pp));
+   // cprintf("page_free: Trying to free page at PA = 0x%x\n", page2pa(pp));
 
     // Check for invalid free conditions
     if (pp->pp_ref != 0) {
-        cprintf("ERROR: page_free: pp_ref = %d (should be 0)\n", pp->pp_ref);
+      //  cprintf("ERROR: page_free: pp_ref = %d (should be 0)\n", pp->pp_ref);
         panic("page_free: trying to free memory that is still in use");
     }
 
@@ -485,7 +489,7 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
 		new_page->pp_ref++;
 
 		*pde = page2pa(new_page) | PTE_P | PTE_W | PTE_U;
-		cprintf("pgdir_walk: Allocated new page table at PA = 0x%x for VA = %p\n", page2pa(new_page), va);
+		//cprintf("pgdir_walk: Allocated new page table at PA = 0x%x for VA = %p\n", page2pa(new_page), va);
 
 
 	}
@@ -561,7 +565,7 @@ page_insert(pde_t *pgdir, struct PageInfo *pp, void *va, int perm)
 
 		return -E_NO_MEM;
 	}
-	cprintf("page_insert: Successfully got PTE for VA = %p\n", va);
+	//cprintf("page_insert: Successfully got PTE for VA = %p\n", va);
 
 	pp->pp_ref++;
 
@@ -717,6 +721,33 @@ int
 user_mem_check(struct Env *env, const void *va, size_t len, int perm)
 {
 	// LAB 3: Your code here.
+	pde_t *pgdir = env->env_pgdir;
+	uintptr_t va_start = ROUNDDOWN(	(uintptr_t)va, PGSIZE);
+	uintptr_t va_end = ROUNDUP((uintptr_t)va + len, PGSIZE);
+	
+
+    
+    for (uintptr_t va_current = va_start; va_current < va_end; va_current++) {
+        if (va_current >= ULIM) {
+			if (va_current < (uintptr_t)va)
+				va_current = (uintptr_t)va;
+
+            user_mem_check_addr = (uintptr_t)va_current;
+			
+            return -E_FAULT;
+        }
+
+		//checks same page multiple times but its ok
+		pte_t *pte = pgdir_walk(pgdir, (void *)va_current, 0);
+        if (!pte || ((*pte & (PTE_P | perm)) != (PTE_P | perm))) {
+            if (va_current < (uintptr_t)va)
+				va_current = (uintptr_t)va;
+			
+            user_mem_check_addr = (uintptr_t)va_current;
+            return -E_FAULT;
+        }
+    }
+
 
 	return 0;
 }
@@ -915,6 +946,16 @@ check_kern_pgdir(void)
 		assert(check_va2pa(pgdir, KERNBASE + i) == i);
 
 	// check kernel stack
+	for (i = 0; i < KSTKSIZE; i += PGSIZE)
+		assert(check_va2pa(pgdir, KSTACKTOP - KSTKSIZE + i) == PADDR(bootstack) + i);
+	assert(check_va2pa(pgdir, KSTACKTOP - PTSIZE) == ~0);
+	for (int i = PDX(KERNBASE); i < NPDENTRIES; i++) {
+		if (!(kern_pgdir[i] & PTE_P)) {
+			cprintf("DEBUG: Missing PDE at index %d (VA = 0x%x)\n", i, i << 22);
+		} else {
+			cprintf("DEBUG: PDE at index %d is correctly mapped (VA = 0x%x)\n", i, i << 22);
+		}
+	}	
 	// (updated in lab 4 to check per-CPU kernel stacks)
 	for (n = 0; n < NCPU; n++) {
 		uint32_t base = KSTACKTOP - (KSTKSIZE + KSTKGAP) * (n + 1);

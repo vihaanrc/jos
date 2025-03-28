@@ -1,3 +1,7 @@
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> main
 a:
 
     +-----+----------------------+---------------------------------------+
@@ -45,3 +49,9 @@ e:
 
     this transition is needed becuase we habvve to load the kernel to physical mem at 1MB and then switch to virtual memory (kernbase + 1MB) to run the kernel
     by using high address we can seperate the kernel and user space without breaking the code execution
+<<<<<<< HEAD
+=======
+=======
+--- Not correct -- 
+>>>>>>> d008ab7 (Finished lab #3)
+>>>>>>> main
