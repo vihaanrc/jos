@@ -26,34 +26,39 @@ pgfault(struct UTrapframe *utf)
 
 	// LAB 4: Your code here.
 
-	// check if the faulting access was a write
-	if ((err & FEC_WR) == 0) {
-		panic("pgfault: not a write");
-	}
-	// check if the faulting access was to a copy-on-write page
-	if ((uvpt[PGNUM(addr)] & PTE_COW) == 0) {
-		panic("pgfault: not a copy-on-write page");
-	}
+	addr = ROUNDDOWN(addr, PGSIZE);
 
-	// Allocate a new page, map it at a temporary location (PFTEMP),
-	// copy the data from the old page to the new page, then move the new
-	// page to the old page's address.
-	// Hint:
-	//   You should make three system calls.
-	if ((r = sys_page_alloc(0, (void *)PFTEMP, PTE_P | PTE_W | PTE_U))< 0) {
-		panic("pgfault: sys_page_alloc failed: %e", r);
-	}
+    // Only handle write faults to COW pages
+    if (!(err & FEC_WR)) {
+        // Not a write - let's determine what type of fault it is
+        if (!(uvpt[PGNUM(addr)] & PTE_P))
+            panic("pgfault: page not present");
+        else
+            panic("pgfault: not a write");
+    }
+    
+    if (!(uvpt[PGNUM(addr)] & PTE_COW)) {
+        // Not a COW page - might be a write to a read-only page
+        panic("pgfault: not a copy-on-write page");
+    }
 
-	memmove((void *)PFTEMP, addr, PGSIZE);
-	// LAB 4: Your code here.
-	if (sys_page_map(0, (void *)PFTEMP, 0, addr, PTE_P | PTE_W | PTE_U) < 0) {
-		panic("pgfault: sys_page_map failed");
-	}
-	if (sys_page_unmap(0, (void *)PFTEMP) < 0) {
-		panic("pgfault: sys_page_unmap failed");
-	}
+    // Now handle the COW fault
+    if ((r = sys_page_alloc(0, (void *)PFTEMP, PTE_P | PTE_W | PTE_U)) < 0) {
+        panic("pgfault: sys_page_alloc failed: %e", r);
+    }
 
-	// panic("pgfault not implemented");
+    // Copy the data
+    memmove((void *)PFTEMP, addr, PGSIZE);
+    
+    // Map the new page at the fault address with write permission
+    if ((r = sys_page_map(0, (void *)PFTEMP, 0, addr, PTE_P | PTE_W | PTE_U)) < 0) {
+        panic("pgfault: sys_page_map failed: %e", r);
+    }
+    
+    // Unmap the temporary page
+    if ((r = sys_page_unmap(0, (void *)PFTEMP)) < 0) {
+        panic("pgfault: sys_page_unmap failed: %e", r);
+    }
 }
 
 //
