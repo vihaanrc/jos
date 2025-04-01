@@ -1,5 +1,6 @@
 /* See COPYRIGHT for copyright information. */
 
+#include "spinlock.h"
 #include <inc/x86.h>
 #include <inc/mmu.h>
 #include <inc/error.h>
@@ -586,10 +587,14 @@ env_run(struct Env *e)
 		}
 	}
 	curenv = e;
+	thiscpu->cpu_env = curenv;
 	curenv->env_status = ENV_RUNNING;
 	curenv->env_runs++;
-	lcr3(PADDR(curenv->env_pgdir));
-	env_pop_tf(&(curenv->env_tf));
+	cprintf("ENV_RUN: Switching to env %08x, eip = %08x, esp = %08x\n",
+        e->env_id, e->env_tf.tf_eip, e->env_tf.tf_esp);
 
+	lcr3(PADDR(curenv->env_pgdir));
+	unlock_kernel();
+	env_pop_tf(&(curenv->env_tf));
 }
 

@@ -11,6 +11,7 @@
 #include <kern/env.h>
 #include <kern/cpu.h>
 
+
 // These variables are set by i386_detect_memory()
 size_t npages;			// Amount of physical memory (in pages)
 static size_t npages_basemem;	// Amount of base memory (in pages)
@@ -264,6 +265,7 @@ mem_init(void)
 
 	// Some more checks, only possible after kern_pgdir is installed.
 	check_page_installed_pgdir();
+	//hidden_test_cases();
 }
 
 // Modify mappings in kern_pgdir to support SMP
@@ -288,7 +290,21 @@ mem_init_mp(void)
 	//     Permissions: kernel RW, user NONE
 	//
 	// LAB 4: Your code here:
-
+	for (int i = 0; i < NCPU; i++) {
+        // Calculate the top of the stack for CPU i
+        uintptr_t kstacktop_i = KSTACKTOP - i * (KSTKSIZE + KSTKGAP);
+        
+        // Map the stack area [kstacktop_i - KSTKSIZE, kstacktop_i) to physical memory
+        // The physical memory is in percpu_kstacks[i]
+        boot_map_region(kern_pgdir,
+                        kstacktop_i - KSTKSIZE,
+                        KSTKSIZE,
+                        PADDR(percpu_kstacks[i]),
+                        PTE_W);
+        
+        // The guard page [kstacktop_i - (KSTKSIZE + KSTKGAP), kstacktop_i - KSTKSIZE)
+        // is left unmapped, so no action required for it
+    }
 }
 
 // --------------------------------------------------------------
@@ -355,6 +371,13 @@ page_init(void)
             pages[i].pp_link = NULL;
             continue;
         }
+
+		// Step 4: Reserve the MPENTRY_PADDR page
+		if (pa == MPENTRY_PADDR) {
+			pages[i].pp_ref = 1;
+			pages[i].pp_link = NULL;
+			continue;
+		}
 
         // Step 4: Mark all remaining pages as free
         pages[i].pp_ref = 0;
@@ -474,14 +497,14 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
 	//check the presence bit of the entry
 	if (!(*pde & PTE_P)) {
 		if (!create) {
-            cprintf("pgdir_walk: No page table for VA = %p and create = 0\n", va);
+            // cprintf("pgdir_walk: No page table for VA = %p and create = 0\n", va);
 
 			return NULL; //the page is not present and we cannot create
 		}
 
 		struct PageInfo *new_page = page_alloc(ALLOC_ZERO);
 		if (!new_page) {
-            cprintf("pgdir_walk: Failed to allocate page table for VA = %p\n", va);
+            // cprintf("pgdir_walk: Failed to allocate page table for VA = %p\n", va);
 
 			return NULL;
 		}
@@ -561,7 +584,7 @@ page_insert(pde_t *pgdir, struct PageInfo *pp, void *va, int perm)
 	pte_t *pte = pgdir_walk(pgdir, va, 1);
 
 	if (!pte) {
-		cprintf("ERROR: page_insert failed! pgdir_walk returned NULL for VA = %p\n", va);
+		// cprintf("ERROR: page_insert failed! pgdir_walk returned NULL for VA = %p\n", va);
 
 		return -E_NO_MEM;
 	}
@@ -694,7 +717,16 @@ mmio_map_region(physaddr_t pa, size_t size)
 	// Hint: The staff solution uses boot_map_region.
 	//
 	// Your code here:
-	panic("mmio_map_region not implemented");
+	// panic("mmio_map_region not implemented");
+
+	size = ROUNDUP(size, PGSIZE);
+	if (base + size > MMIOLIM) {
+		panic("mmio_map_region: MMIO region overflow");
+	}
+	uintptr_t va = base;
+	boot_map_region(kern_pgdir, base, size, pa, PTE_W | PTE_PCD | PTE_PWT);
+	base += size;
+	return (void *)va;
 }
 
 static uintptr_t user_mem_check_addr;
@@ -946,16 +978,6 @@ check_kern_pgdir(void)
 		assert(check_va2pa(pgdir, KERNBASE + i) == i);
 
 	// check kernel stack
-	for (i = 0; i < KSTKSIZE; i += PGSIZE)
-		assert(check_va2pa(pgdir, KSTACKTOP - KSTKSIZE + i) == PADDR(bootstack) + i);
-	assert(check_va2pa(pgdir, KSTACKTOP - PTSIZE) == ~0);
-	for (int i = PDX(KERNBASE); i < NPDENTRIES; i++) {
-		if (!(kern_pgdir[i] & PTE_P)) {
-			cprintf("DEBUG: Missing PDE at index %d (VA = 0x%x)\n", i, i << 22);
-		} else {
-			cprintf("DEBUG: PDE at index %d is correctly mapped (VA = 0x%x)\n", i, i << 22);
-		}
-	}	
 	// (updated in lab 4 to check per-CPU kernel stacks)
 	for (n = 0; n < NCPU; n++) {
 		uint32_t base = KSTACKTOP - (KSTKSIZE + KSTKGAP) * (n + 1);
@@ -966,6 +988,16 @@ check_kern_pgdir(void)
 			assert(check_va2pa(pgdir, base + i) == ~0);
 	}
 
+	// for (i = 0; i < KSTKSIZE; i += PGSIZE)
+	// 	assert(check_va2pa(pgdir, KSTACKTOP - KSTKSIZE + i) == PADDR(bootstack) + i);
+	// assert(check_va2pa(pgdir, KSTACKTOP - PTSIZE) == ~0);
+	// for (int i = PDX(KERNBASE); i < NPDENTRIES; i++) {
+	// 	if (!(kern_pgdir[i] & PTE_P)) {
+	// 		cprintf("DEBUG: Missing PDE at index %d (VA = 0x%x)\n", i, i << 22);
+	// 	} else {
+	// 		cprintf("DEBUG: PDE at index %d is correctly mapped (VA = 0x%x)\n", i, i << 22);
+	// 	}
+	// }	
 	// check PDE permissions
 	for (i = 0; i < NPDENTRIES; i++) {
 		switch (i) {
