@@ -590,8 +590,8 @@ env_run(struct Env *e)
 	thiscpu->cpu_env = curenv;
 	curenv->env_status = ENV_RUNNING;
 	curenv->env_runs++;
-	cprintf("ENV_RUN: Switching to env %08x, eip = %08x, esp = %08x\n",
-        e->env_id, e->env_tf.tf_eip, e->env_tf.tf_esp);
+	// cprintf("ENV_RUN: Switching to env %08x, eip = %08x, esp = %08x\n",
+        // e->env_id, e->env_tf.tf_eip, e->env_tf.tf_esp);
 
 	lcr3(PADDR(curenv->env_pgdir));
 	unlock_kernel();

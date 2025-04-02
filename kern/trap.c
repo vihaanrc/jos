@@ -414,19 +414,19 @@ page_fault_handler(struct Trapframe *tf)
 
 		curenv->env_tf.tf_eip = (uintptr_t) curenv->env_pgfault_upcall;
 		curenv->env_tf.tf_esp = utf_addr;
-		cprintf("PF HANDLER: user pgfault handler @ %08x\n", curenv->env_pgfault_upcall);
-		cprintf("PF HANDLER: setting trapframe eip = %08x, esp = %08x\n", tf->tf_eip, tf->tf_esp);
-		cprintf("PF HANDLER: writing UTrapframe to %08x\n", utf_addr);
-		cprintf("  utf->fault_va = %08x\n", utf->utf_fault_va);
-		cprintf("  current trapframe before env_run: eip=%08x esp=%08x\n",
-			curenv->env_tf.tf_eip, curenv->env_tf.tf_esp);
+		// cprintf("PF HANDLER: user pgfault handler @ %08x\n", curenv->env_pgfault_upcall);
+		// cprintf("PF HANDLER: setting trapframe eip = %08x, esp = %08x\n", tf->tf_eip, tf->tf_esp);
+		// cprintf("PF HANDLER: writing UTrapframe to %08x\n", utf_addr);
+		// cprintf("  utf->fault_va = %08x\n", utf->utf_fault_va);
+		// cprintf("  current trapframe before env_run: eip=%08x esp=%08x\n",
+		// 	curenv->env_tf.tf_eip, curenv->env_tf.tf_esp);
 		
 
 		env_run(curenv);
-		cprintf("  current trapframe after env_run: eip=%08x esp=%08x\n",
-			curenv->env_tf.tf_eip, curenv->env_tf.tf_esp);
+		// cprintf("  current trapframe after env_run: eip=%08x esp=%08x\n",
+		// 	curenv->env_tf.tf_eip, curenv->env_tf.tf_esp);
 		
-		cprintf("PF HANDLER: Returned from env_run()?!\n");
+		// cprintf("PF HANDLER: Returned from env_run()?!\n");
 
 	}	
 
