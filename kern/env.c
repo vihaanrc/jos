@@ -271,6 +271,8 @@ env_alloc(struct Env **newenv_store, envid_t parent_id)
 	// Enable interrupts while in user mode.
 	// LAB 4: Your code here.
 
+	e->env_tf.tf_eflags |= FL_IF;
+
 	// Clear the page fault handler until user installs one.
 	e->env_pgfault_upcall = 0;
 
@@ -580,6 +582,7 @@ env_run(struct Env *e)
 	//	e->env_tf to sensible values.
 
 	// LAB 3: Your code here.
+	
 	if (curenv) {
 		if (curenv->env_status == ENV_RUNNING) {
 			curenv->env_status = ENV_RUNNABLE;
@@ -588,7 +591,10 @@ env_run(struct Env *e)
 	curenv = e;
 	curenv->env_status = ENV_RUNNING;
 	curenv->env_runs++;
-	lcr3(PADDR(curenv->env_pgdir));
+	
+	lcr3(PADDR(curenv->env_pgdir)); 
+	
+	unlock_kernel(); //next instrunction will be in user mode
 	env_pop_tf(&(curenv->env_tf));
 
 }

@@ -1,0 +1,14 @@
+Question 1 (Exercise 2):
+    The macro MPBOOTPHYS is needed to calculate the absolute address.
+    The linked address is above KERNBASE, while the actual code is copied into a lower memory
+    region. Thus, we need the macro to ensure that we access instructions that exist, which 
+    prevents faults (accessing virtual memory that does not yet exist)
+
+Question 2 (Exercise 5):
+Even with kernel locks, interrupts on CPUs require separate kernel stacks because they need to store their own trap frames and execution state seperately.
+
+Question 3 (Exercise 6):
+   e is dereferenceable before and after the addressing switch because, according to kern/pmap.c, all address spaces are relative to KERNBASE.
+
+Question 4 (Exercise 6):
+    The kernel saves the old environment’s registers to preserve the execution state for later restoration, and it restores trapframe in env_run() using curenv->env_tf.
