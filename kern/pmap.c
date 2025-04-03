@@ -486,7 +486,7 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
 	//check the presence bit of the entry
 	if (!(*pde & PTE_P)) {
 		if (!create) {
-            cprintf("pgdir_walk: No page table for VA = %p and create = 0\n", va);
+          //  cprintf("pgdir_walk: No page table for VA = %p and create = 0\n", va);
 
 			return NULL; //the page is not present and we cannot create
 		}
