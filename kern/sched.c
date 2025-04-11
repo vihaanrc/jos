@@ -30,6 +30,35 @@ sched_yield(void)
 	// below to halt the cpu.
 
 	// LAB 4: Your code here.
+	
+
+	size_t next_idx;  
+
+	// there is no current env running/you are past the "end"
+	if(curenv == NULL) {
+		next_idx = 0; 
+	}
+	else {
+		size_t curr_idx = ENVX(curenv -> env_id);
+		next_idx = (curr_idx + 1) % NENV;
+	}
+
+	for (size_t i = 0; i < NENV; i++) {
+		
+		// if there is a next environment that is runnable, run it 
+		if(envs[next_idx].env_status == ENV_RUNNABLE) {
+			env_run(&envs[next_idx]);
+		} 
+
+		next_idx = (next_idx + 1) % NENV;
+	}
+
+	// keep running if you're already processing something
+	if (curenv != NULL && curenv -> env_status == ENV_RUNNING) {
+		env_run(curenv);
+	}
+
+
 
 	// sched_halt never returns
 	sched_halt();
@@ -77,7 +106,7 @@ sched_halt(void)
 		"pushl $0\n"
         // LAB 4:
 		// Uncomment the following line after completing exercise 13
-		//"sti\n"
+		"sti\n"
 		"1:\n"
 		"hlt\n"
 		"jmp 1b\n"
