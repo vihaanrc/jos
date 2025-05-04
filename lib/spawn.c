@@ -1,6 +1,7 @@
 #include <inc/lib.h>
 #include <inc/elf.h>
 
+
 #define UTEMP2USTACK(addr)	((void*) (addr) + (USTACKTOP - PGSIZE) - UTEMP)
 #define UTEMP2			(UTEMP + PGSIZE)
 #define UTEMP3			(UTEMP2 + PGSIZE)
@@ -301,7 +302,22 @@ map_segment(envid_t child, uintptr_t va, size_t memsz,
 static int
 copy_shared_pages(envid_t child)
 {
-	// LAB 5: Your code here.
+	int r;
+
+	for (uintptr_t pn = 0; pn < (USTACKTOP >> PGSHIFT); ++pn) {
+		void* addr = (void*) (pn << PGSHIFT);
+
+		if ((uvpd[PDX(addr)] & PTE_P) == 0) continue;
+
+		uint32_t pte = uvpt[pn];
+		if((pte & PTE_P) != 0 && (pte & PTE_SHARE) != 0) {
+			r = sys_page_map(0, addr, child, addr, pte & PTE_SYSCALL);
+			if (r < 0) {
+				return r;
+			} 
+		} 
+	}
+
 	return 0;
 }
 

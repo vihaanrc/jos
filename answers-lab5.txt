@@ -1,0 +1,4 @@
+Question 1: 
+env_tf.tf_eflags is a saved state of the CPU's control flags in the trapframe. 
+Switching environments restores the saved state, and IOPL is part of eflags, so it is saved too, with no
+need for further work.

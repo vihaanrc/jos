@@ -161,24 +161,28 @@ sys_env_set_trapframe(envid_t envid, struct Trapframe *tf)
 	// LAB 5: Your code here.
 	// Remember to check whether the user has supplied us with a good
 	// address!
-	panic("sys_env_set_trapframe not implemented");
+	struct Env *e;
+	int r;
+
+	
+	if ((r = envid2env(envid, &e, 1)) < 0)
+		return -E_BAD_ENV;
+
+	if ((r = user_mem_check(curenv, tf, sizeof(struct Trapframe), PTE_U)) < 0)
+		return r;
+
+
+	e->env_tf = *tf;
+
+	
+	e->env_tf.tf_cs |= 0x3;                   
+	e->env_tf.tf_eflags |= FL_IF;              //interupts enabled
+	e->env_tf.tf_eflags &= ~FL_IOPL_MASK;      // IOPL of 0 
+
+	return 0;
 }
 
-// Set envid's trap frame to 'tf'.
-// tf is modified to make sure that user environments always run at code
-// protection level 3 (CPL 3), interrupts enabled, and IOPL of 0.
-//
-// Returns 0 on success, < 0 on error.  Errors are:
-//	-E_BAD_ENV if environment envid doesn't currently exist,
-//		or the caller doesn't have permission to change envid.
-static int
-sys_env_set_trapframe(envid_t envid, struct Trapframe *tf)
-{
-	// LAB 5: Your code here.
-	// Remember to check whether the user has supplied us with a good
-	// address!
-	panic("sys_env_set_trapframe not implemented");
-}
+
 
 // Set the page fault upcall for 'envid' by modifying the corresponding struct
 // Env's 'env_pgfault_upcall' field.  When 'envid' causes a page fault, the
@@ -234,35 +238,33 @@ sys_page_alloc(envid_t envid, void *va, int perm)
 	// check permissions
 	
 	// if U or P not set, return -E_INVAL
-	if ((perm & PTE_U) == 0 || (perm & PTE_P) == 0) {
-		return -E_INVAL;
-	}
-	// if any other bits are set, return -E_INVAL
-	if ((perm & ~PTE_SYSCALL) != 0) {
-		return -E_INVAL;
-	}
-	if ((uint32_t)va >= UTOP || (uint32_t)va % PGSIZE != 0) {
-		return -E_INVAL;
-	}
+	// Hint: This function is a wrapper around page_alloc() and
+// page_insert() from kern/pmap.c.
+// Most of the new code you write should be to check the
+// parameters for correctness.
+// If page_insert() fails, remember to free the page you
+// allocated!
+// LAB 4: Your code here.
+struct Env *e;
+int err = envid2env(envid,&e, 1);
+if (err < 0) {
+return err;
+} else if ((uintptr_t)va >= UTOP || (uintptr_t)va % PGSIZE != 0) {
+return -E_INVAL;
+} else if ((perm & ~PTE_SYSCALL) != 0) {
+return -E_INVAL;
+}
 
-	struct Env *e;
-	int r = envid2env(envid, &e, 1);
-	if (r < 0) {
-		return r;
-	}
-	struct PageInfo *pp = page_alloc(ALLOC_ZERO);
-	if (!pp) {
-		return -E_NO_MEM;
-	}
-	
-	// insert page into page table
-	r = page_insert(e->env_pgdir, pp, va, perm);
-	if (r < 0) {
-		page_free(pp);
-		return r;
-	}
+struct PageInfo *p = page_alloc(ALLOC_ZERO);
+if (!p) {
+return -E_NO_MEM;
+}
 
-	return 0;
+if ((err = page_insert(e->env_pgdir, p, va, perm | PTE_U | PTE_P)) < 0) {
+page_free(p);
+return err;
+}
+return 0;
 
 }
 
@@ -526,6 +528,8 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 			return sys_ipc_try_send(a1, a2, (void*)a3, a4);
 		case(SYS_ipc_recv):
 			return sys_ipc_recv((void*)a1);
+		case(SYS_env_set_trapframe):
+			return sys_env_set_trapframe((envid_t)a1, (struct Trapframe*)a2);
 		default:
 			return -E_INVAL;
 	}

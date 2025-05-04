@@ -82,6 +82,13 @@ duppage(envid_t envid, unsigned pn)
 	void * addr = (void *)(pn * PGSIZE);
 	uint32_t pte = uvpt[pn];
 
+
+	if (pte & PTE_SHARE) {
+		r = sys_page_map(0, addr, envid, addr, pte & PTE_SYSCALL);
+		if (r < 0)
+			return r;
+		return 0;
+	}
 	// check if the page is writable or copy-on-write
 	if ((pte & PTE_W) || (pte & PTE_COW)) {
 		// create a copy-on-write mapping

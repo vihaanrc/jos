@@ -57,12 +57,22 @@ free_block(uint32_t blockno)
 int
 alloc_block(void)
 {
-	// The bitmap consists of one or more blocks.  A single bitmap block
-	// contains the in-use bits for BLKBITSIZE blocks.  There are
-	// super->s_nblocks blocks in the disk altogether.
+	
+	
+	uint32_t total = super->s_nblocks;
 
-	// LAB 5: Your code here.
-	panic("alloc_block not implemented");
+	for (uint32_t blockno = 0; blockno < total; blockno++) {
+		if (block_is_free(blockno)) {
+			// Mark block as used: clear the bit in the bitmap
+			bitmap[blockno / 32] &= ~(1U << (blockno % 32));
+
+			// Flush the bitmap block to disk
+			flush_block(&bitmap[blockno / 32]);
+
+			return blockno;
+		}
+	}
+
 	return -E_NO_DISK;
 }
 
@@ -134,8 +144,32 @@ fs_init(void)
 static int
 file_block_walk(struct File *f, uint32_t filebno, uint32_t **ppdiskbno, bool alloc)
 {
-       // LAB 5: Your code here.
-       panic("file_block_walk not implemented");
+	if (filebno >= NDIRECT + NINDIRECT)
+	return -E_INVAL;
+
+	if (filebno < NDIRECT) {
+		*ppdiskbno = &f->f_direct[filebno];
+		return 0;
+	}
+
+	
+	if (f->f_indirect == 0) { //check if indirect block is allocated
+		if (!alloc) 
+			return -E_NOT_FOUND;
+
+		int r = alloc_block();
+		if (r < 0)
+			return -E_NO_DISK; //cannot allocate block
+
+		f->f_indirect = r; //returned address
+	
+		
+	}
+
+	
+	uint32_t *indirect = (uint32_t*) diskaddr(f->f_indirect);
+	*ppdiskbno = &indirect[filebno - NDIRECT]; //set address of indirect block variable in ppdiskbno
+	return 0; //success
 }
 
 // Set *blk to the address in memory where the filebno'th
@@ -149,8 +183,23 @@ file_block_walk(struct File *f, uint32_t filebno, uint32_t **ppdiskbno, bool all
 int
 file_get_block(struct File *f, uint32_t filebno, char **blk)
 {
-       // LAB 5: Your code here.
-       panic("file_get_block not implemented");
+	uint32_t *ppdiskbno;
+	int r = file_block_walk(f, filebno, &ppdiskbno, true);
+	if (r < 0)
+		return r;
+
+	if (*ppdiskbno == 0) {
+		int new = alloc_block();
+		if (new< 0)
+			return -E_NO_DISK;
+
+		*ppdiskbno = new;
+		void *va = diskaddr(new);
+		
+	}
+
+	*blk = (char*) diskaddr(*ppdiskbno);
+	return 0;
 }
 
 // Try to find a file named "name" in dir.  If so, set *file to it.
